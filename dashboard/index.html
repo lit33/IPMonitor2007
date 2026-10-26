@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IP Monitor 2007 — Публичный статус</title>
+<style>
+:root{font-family:Segoe UI,Tahoma,sans-serif;color:#243750;background:#eaf1fa}*{box-sizing:border-box}body{margin:0}header{padding:22px 6%;background:linear-gradient(#5287c4,#21558b);color:white;box-shadow:0 3px 12px #9fb2cb}h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#e1edff}.wrap{max-width:1150px;margin:28px auto;padding:0 16px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}.tile,.panel{background:#fff;border:1px solid #c7d8ec;border-radius:10px;box-shadow:0 3px 10px #c9d7e655;padding:18px}.tile strong{display:block;font-size:32px;color:#245b92}.tile span{color:#637996}.panel h2{margin:0 0 14px;font-size:18px}table{border-collapse:collapse;width:100%}th{text-align:left;background:#dfeaf8;color:#31597e}td,th{padding:13px;border-bottom:1px solid #e3ebf5}.ok{color:#14814e;font-weight:700}.bad{color:#b12d35;font-weight:700}.unknown{color:#9a6511;font-weight:700}#error{color:#aa3030}footer{margin:18px 0;color:#687e94;font-size:13px}button{background:#3676b6;color:white;border:0;padding:9px 16px;border-radius:5px;cursor:pointer}@media(max-width:650px){.stats{grid-template-columns:1fr}table{font-size:12px}td,th{padding:8px}.wrap{padding:0 8px}}</style>
+</head><body><header><h1>IP Monitor 2007</h1><p>Публичная панель состояния сетевых устройств</p></header>
+<main class="wrap"><section class="stats"><div class="tile"><strong id="total">—</strong><span>Устройств</span></div><div class="tile"><strong id="online">—</strong><span>Доступны</span></div><div class="tile"><strong id="offline">—</strong><span>Недоступны / нет данных</span></div></section>
+<section class="panel"><h2>Мониторинг сети <button id="reload" type="button">Обновить</button></h2><p id="error" role="status"></p><table><thead><tr><th>Устройство</th><th>Состояние</th><th>Отклик</th><th>Проверено</th></tr></thead><tbody id="rows"><tr><td colspan="4">Загрузка…</td></tr></tbody></table></section>
+<footer>Обновление каждые 30 секунд. Если данные старше 2 минут, устройство считается не проверенным.</footer></main>
+<script src="./config.js"></script><script>
+"use strict";
+const url=window.MONITOR_CONFIG?.supabaseUrl;
+const key=window.MONITOR_CONFIG?.publishableKey;
+const $=id=>document.getElementById(id);
+function cell(row,text,cls){const td=document.createElement("td");td.textContent=text;if(cls)td.className=cls;row.appendChild(td);}
+async function load(){
+ if(!url||!key||url.includes("YOUR_PROJECT")){$("error").textContent="Настройте dashboard/config.js: Supabase URL и publishable (anon) key";return;}
+ try{
+ const response=await fetch(url.replace(/\/$/,"")+"/rest/v1/monitor_public_status?select=device_id,name,is_up,latency_ms,checked_at,received_at&order=name.asc",
+ {headers:{"apikey":key},cache:"no-store"});
+ if(!response.ok)throw new Error("HTTP "+response.status);
+ const data=await response.json();const tbody=$("rows");tbody.replaceChildren();let online=0;const stale=120000;
+ data.forEach(d=>{const fresh=Date.now()-new Date(d.received_at).getTime()<stale;const ok=fresh&&d.is_up;const state=!fresh?"Нет данных":ok?"Доступен":"Недоступен";if(ok)online++;
+ const tr=document.createElement("tr");cell(tr,d.name);cell(tr,state,!fresh?"unknown":ok?"ok":"bad");cell(tr,fresh&&d.is_up&&d.latency_ms!=null?d.latency_ms+" мс":"—");cell(tr,new Date(d.checked_at).toLocaleString("ru-RU"));tbody.appendChild(tr);});
+ if(!data.length){const tr=document.createElement("tr");cell(tr,"Пока нет данных");tr.firstChild.colSpan=4;tbody.appendChild(tr);}
+ $("total").textContent=data.length;$("online").textContent=online;$("offline").textContent=data.length-online;$("error").textContent="";
+ }catch(e){$("error").textContent="Ошибка загрузки: "+e.message;}
+}
+$("reload").addEventListener("click",load);load();setInterval(load,30000);
+</script></body></html>

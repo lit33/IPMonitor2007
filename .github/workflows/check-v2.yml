@@ -1,0 +1,19 @@
+name: Check monitoring V2
+on:
+  pull_request:
+    paths: ['windows-agent/**', 'dashboard/**', 'supabase/**', 'README-v2.md', '.github/workflows/check-v2.yml']
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Windows agent syntax
+        run: python -m py_compile windows-agent/agent.py
+      - name: Test dashboard JavaScript syntax
+        run: |
+          node --check dashboard/config.js
+          node --check dashboard/config.example.js

@@ -1,0 +1,9 @@
+# Credentials / machine-specific configuration
+windows-agent/config.json
+windows-agent/.env
+supabase/functions/.env
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
